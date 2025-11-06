@@ -1,18 +1,14 @@
-import socket
+from flask import Flask
+from flask_sock import Sock
 
+app = Flask(__name__)
+sock = Sock(app)
 
-HOST = '0.0.0.0'
-PORT = 8000
+@sock.route('/reverse')
+def reverse(ws):
+    while True:
+        text = ws.recieve()
+        ws.send(text[::-1])
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-with sock:   
-    sock.bind((HOST, PORT))
-    sock.listen(5)
-    print(f"Listening on port {PORT}...")
-
-    conn, addr = sock.accept()
-    print(conn)
-    print(addr)
-    with conn:
-        data = conn.recv(1500)
-        print(data)
+if __name__ == "__main__" :
+    app.run(debug = True, host = "0.0.0.0")
