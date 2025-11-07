@@ -7,7 +7,7 @@ sock = Sock(app)
 @sock.route('/reverse')
 def reverse(ws):
     while True:
-        text = ws.recieve()
+        text = ws.receive()
         ws.send(text[::-1])
 
 if __name__ == "__main__" :
