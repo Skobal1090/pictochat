@@ -20,8 +20,8 @@ def reverse(ws):
         msg = ws.receive()
         data = json.loads(msg)
         if msg:
-            print(f"Message recieved!\n From: {data['name']} \n Content: {data['msg']}")
-        ws.send(data)
+            print(f"Message recieved!\n From: {data['name']} \n Content: {data['msg']} \n Time: {data['time']}")
+        ws.send(msg)
 
 if __name__ == "__main__" :
     app.run(debug = True, host = "0.0.0.0")

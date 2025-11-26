@@ -10,6 +10,7 @@
         <p>Welcome to Pictochat!</p>
         <input type="text" id="messageInput" placeholder="Type your message">
         <button onclick="sendMessage()">Send</button>
+        <a href="../" ><button>Change Name</button></a>
         <div id="messages"></div>
 
         <script type="text/javascript">
@@ -17,9 +18,11 @@
 
             function sendMessage() {
                 var messageInput = document.getElementById('messageInput');
+                var date = new Date();
                 var message = {
                     msg : messageInput.value,
-                    name : sessionStorage.getItem("displayName")
+                    name : sessionStorage.getItem("displayName"),
+                    time : date.toLocaleTimeString('en-US')
                 };
                 var jsonMessage = JSON.stringify(message);
                 socket.send(jsonMessage);
@@ -27,19 +30,12 @@
             }
 
             socket.addEventListener("message", (event) => {
-                console.log("Message from server: ", event.data);
+                var jsonMessage = JSON.parse(event.data);
+                console.log("Message from server: ", jsonMessage);
                 var messageDiv = document.getElementById('messages');
-                messageDiv.innerHTML += '<p>' + event.data + '</p>';
+                var msgString = "" + jsonMessage.time + " | " + jsonMessage.name + ": " + jsonMessage.msg;
+                messageDiv.innerHTML += '<p>' + msgString + '</p>';
             });
-
-            // socket.on('connect', function() {
-            //     console.log('Connected to server');
-            // });
-
-            // socket.on('receive_message', function(data) {
-            //     var messageDiv = document.getElementById('messages');
-            //     messageDiv.innerHTML += '<p>' + data.message + '</p>';
-            // });
 
         </script>
     </body>

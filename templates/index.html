@@ -8,15 +8,15 @@
     <body>
         <h1>{{"Select a name to join the room!"}}</h1>
         <input type="text" id="nameInput" placeholder="Name">
-        <button onclick="chooseName()">Choose Name</button>
-        <a href="room" ><button>Join Room</button></a>
-
+        <button onclick="joinRoom()">Go!</button>
+    
         <script type="text/javascript">
 
-            function chooseName() {
+            function joinRoom() {
                 var nameInput = document.getElementById("nameInput");
                 if (typeof(Storage) !== "undefined") {
                     sessionStorage.setItem("displayName", nameInput.value);
+                    window.location.replace("../room")
                 } else {
                     x.innerHTML = "Browser does not support session storage";
                 } 
