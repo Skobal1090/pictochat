@@ -1,0 +1,46 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ title }}</title>
+    </head>
+    <body>
+        <h1>{{ heading }}</h1>
+        <p>Welcome to Pictochat!</p>
+        <input type="text" id="messageInput" placeholder="Type your message">
+        <button onclick="sendMessage()">Send</button>
+        <div id="messages"></div>
+
+        <script type="text/javascript">
+            var socket = new WebSocket('http://127.0.0.1:5000/chatroom');
+
+            function sendMessage() {
+                var messageInput = document.getElementById('messageInput');
+                var message = {
+                    msg : messageInput.value,
+                    name : sessionStorage.getItem("displayName")
+                };
+                var jsonMessage = JSON.stringify(message);
+                socket.send(jsonMessage);
+                messageInput.value = '';
+            }
+
+            socket.addEventListener("message", (event) => {
+                console.log("Message from server: ", event.data);
+                var messageDiv = document.getElementById('messages');
+                messageDiv.innerHTML += '<p>' + event.data + '</p>';
+            });
+
+            // socket.on('connect', function() {
+            //     console.log('Connected to server');
+            // });
+
+            // socket.on('receive_message', function(data) {
+            //     var messageDiv = document.getElementById('messages');
+            //     messageDiv.innerHTML += '<p>' + data.message + '</p>';
+            // });
+
+        </script>
+    </body>
+    </html>
