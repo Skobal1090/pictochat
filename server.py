@@ -11,7 +11,7 @@ def home():
 
 @app.route('/room')
 def room():
-    return render_template('room.html', title='Pictochat', heading='Room A')
+    return render_template('room.html', title='Pictochat', heading='Welcome to Pictochat!')
     
 
 @sock.route('/chatroom')

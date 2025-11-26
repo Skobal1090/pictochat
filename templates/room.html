@@ -7,7 +7,6 @@
     </head>
     <body>
         <h1>{{ heading }}</h1>
-        <p>Welcome to Pictochat!</p>
         <input type="text" id="messageInput" placeholder="Type your message">
         <button onclick="sendMessage()">Send</button>
         <a href="../" ><button>Change Name</button></a>
@@ -18,6 +17,7 @@
 
             function sendMessage() {
                 var messageInput = document.getElementById('messageInput');
+                if(messageInput.value === "") return;
                 var date = new Date();
                 var message = {
                     msg : messageInput.value,
@@ -28,6 +28,12 @@
                 socket.send(jsonMessage);
                 messageInput.value = '';
             }
+
+            messageInput.addEventListener('keydown', (event) => {
+                if(event.key === 'Enter'){
+                    sendMessage();
+                }
+            })
 
             socket.addEventListener("message", (event) => {
                 var jsonMessage = JSON.parse(event.data);
