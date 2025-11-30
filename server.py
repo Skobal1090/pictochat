@@ -18,7 +18,7 @@ def room():
 def handle_message(msg):
     data = json.loads(msg)
     print(f"Message From: {data['name']}: {data['msg']} \n Time: {data['time']}")
-    emit('message', msg, broadcast=True, include_self=True, json=True)
+    emit('message', msg, broadcast=True)
     print(f"Message returned: {msg}")
 
 

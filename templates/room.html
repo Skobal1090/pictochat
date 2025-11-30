@@ -43,7 +43,6 @@
             });
 
             socket.on("message", (event) => {
-                console.log(`data ${event.data}`);
                 var jsonMessage = JSON.parse(event);
                 console.log("Message from server: ", jsonMessage);
                 var messageDiv = document.getElementById('messages');
