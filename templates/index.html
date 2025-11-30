@@ -20,6 +20,7 @@
 
             function joinRoom() {
                 var nameInput = document.getElementById("nameInput");
+                if(nameInput.value === "") return;
                 if (typeof(Storage) !== "undefined") {
                     sessionStorage.setItem("displayName", nameInput.value);
                     window.location.replace("../room")
