@@ -9,7 +9,7 @@
         <h1>{{ heading }}</h1>
         <input type="text" id="messageInput" placeholder="Type your message">
         <button onclick="sendMessage()">Send</button>
-        <a href="../" ><button>Change Name</button></a>
+        <a href="../" ><button onclick="leftRoom()">Leave Room</button></a>
         <div id="messages"></div>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
@@ -17,6 +17,12 @@
             const socket = io();
             socket.on('connect', function() {
                 console.log("Connected to server");
+                joinedRoom();
+            });
+
+            socket.on('disconnect', function() {
+                console.log("Disconnected from server");
+                leftRoom();
             });
 
             function sendMessage() {
@@ -33,14 +39,60 @@
                 messageInput.value = '';
             }
 
+            function joinedRoom() {
+                var date = new Date();
+                const joinedRoomMsg = {
+                    name : sessionStorage.getItem("displayName"),
+                    time : date.toLocaleTimeString('en-US')
+                };
+                const jsonJoinedRoomMsg = JSON.stringify(joinedRoomMsg);
+                socket.emit('joinedRoom', jsonJoinedRoomMsg);
+            }
+
+            function leftRoom() {
+                var date = new Date();
+                const leftRoomMsg = {
+                    name : sessionStorage.getItem("displayName"),
+                    time : date.toLocaleTimeString('en-US')
+                };
+                const jsonLeftRoomMsg = JSON.stringify(leftRoomMsg);
+                socket.emit('leftRoom', jsonLeftRoomMsg);
+                socket.disconnect();
+            }
+
             messageInput.addEventListener('keydown', (event) => {
                 if(event.key === 'Enter'){
                     sendMessage();
                 }
             })
+
+            /*
+            window.onbeforeunload = (event) => {
+                leftRoom();
+                event.preventDefault();
+                event.returnValue = "";
+            }
+            */
+            
             socket.onAny(event => {
                 console.log(`got ${event}`);
             });
+
+            socket.on("joinedRoom", (event) => {
+                var jsonJoinedRoom = JSON.parse(event);
+                console.log("New person joined room: ", jsonJoinedRoom);
+                var messageDiv = document.getElementById('messages');
+                var joinedRoomString = "" + jsonJoinedRoom.time + " | " + jsonJoinedRoom.name + " has joined the room!";
+                messageDiv.innerHTML += '<p>' + joinedRoomString + '</p>';
+            })
+
+            socket.on("leftRoom", (event) => {
+                var jsonLeftRoom = JSON.parse(event);
+                console.log("New person left room: ", jsonLeftRoom);
+                var messageDiv = document.getElementById('messages');
+                var leftRoomString = "" + jsonLeftRoom.time + " | " + jsonLeftRoom.name + " has left the room!";
+                messageDiv.innerHTML += '<p>' + leftRoomString + '</p>';
+            })
 
             socket.on("message", (event) => {
                 var jsonMessage = JSON.parse(event);
