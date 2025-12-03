@@ -8,16 +8,32 @@
     <body>
         <h1>{{ heading }}</h1>
         <input type="text" id="messageInput" placeholder="Type your message">
-        <button onclick="sendMessage()">Send</button>
-        <a href="../" ><button onclick="leftRoom()">Leave Room</button></a>
+        <button id="sendButton">Send</button>
+        <a href="../" ><button id="leaveButton">Leave Room</button></a>
         <div id="messages"></div>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
         <script type="text/javascript">
-            const socket = io();
+
+        const socket = io();
+
+        (async function() {
+
+            let keyPair = await window.crypto.subtle.generateKey(
+            {
+                name: "RSA-OAEP",
+                modulusLength: 4096,
+                publicExponent: new Uint8Array([1, 0, 1]),
+                hash: "SHA-256",
+            },
+            true,
+            ["encrypt", "decrypt"],
+            );
+
             socket.on('connect', function() {
                 console.log("Connected to server");
-                joinedRoom();
+                console.log(keyPair.publicKey)
+                joinRoom();
             });
 
             socket.on('disconnect', function() {
@@ -25,12 +41,28 @@
                 leftRoom();
             });
 
+            function encodeMessage(msg) {
+                let enc = new TextEncoder;
+                return enc.encode(msg);
+            }
+
+            async function encryptMessage(msg, key) {
+                let ciphertext = await window.crypto.subtle.encrypt(
+                    {
+                        name: "RSA-OAEP"
+                    },
+                    keyPair.publicKey,
+                    encodeMessage(msg)
+                );
+                return ciphertext;
+            }
+
             function sendMessage() {
                 var messageInput = document.getElementById('messageInput');
                 if(messageInput.value === "") return;
                 var date = new Date();
                 var message = {
-                    msg : messageInput.value,
+                    msg : encryptMessage(messageInput.value),
                     name : sessionStorage.getItem("displayName"),
                     time : date.toLocaleTimeString('en-US')
                 };
@@ -39,11 +71,12 @@
                 messageInput.value = '';
             }
 
-            function joinedRoom() {
+            function joinRoom() {
                 var date = new Date();
-                const joinedRoomMsg = {
+                const joinRoomMsg = {
                     name : sessionStorage.getItem("displayName"),
-                    time : date.toLocaleTimeString('en-US')
+                    time : date.toLocaleTimeString('en-US'),
+                    publicKey : keyPair.publicKey.value
                 };
                 const jsonJoinedRoomMsg = JSON.stringify(joinedRoomMsg);
                 socket.emit('joinedRoom', jsonJoinedRoomMsg);
@@ -65,15 +98,13 @@
                     sendMessage();
                 }
             })
-
-            /*
-            window.onbeforeunload = (event) => {
-                leftRoom();
-                event.preventDefault();
-                event.returnValue = "";
-            }
-            */
             
+            const sendButton = document.getElementById("sendButton");
+            const leaveButton = document.getElementById("leaveButton");
+            sendButton.addEventListener('click', sendMessage);
+            leaveButton.addEventListener('click', leftRoom);
+
+            //debug purposes
             socket.onAny(event => {
                 console.log(`got ${event}`);
             });
@@ -101,6 +132,8 @@
                 var msgString = "" + jsonMessage.time + " | " + jsonMessage.name + ": " + jsonMessage.msg;
                 messageDiv.innerHTML += '<p>' + msgString + '</p>';
             });
+
+        })();
 
         </script>
     </body>

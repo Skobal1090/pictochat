@@ -17,7 +17,7 @@ def room():
 @socketio.on('joinedRoom')
 def handle_connect(joinedRoomMsg):
     data = json.loads(joinedRoomMsg)
-    print(f"{data['name']} has joined the room at {data['time']}")
+    print(f"{data['name']} has joined the room at {data['time']} with public key {data['publicKey']}")
     emit('joinedRoom', joinedRoomMsg, broadcast = True)
 
 @socketio.on('leftRoom')
