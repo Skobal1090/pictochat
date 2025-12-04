@@ -2,8 +2,16 @@ from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO, send, emit
 import json
 
+
+envVars = []
+try:
+    with open('.env.local') as file:
+        envVars = file.read()
+except FileNotFoundError:
+    print(".env.local file not found")
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
+app.config['SECRET_KEY'] = envVars[0]
 socketio = SocketIO(app)
 
 @app.route('/')
@@ -17,7 +25,7 @@ def room():
 @socketio.on('joinedRoom')
 def handle_connect(joinedRoomMsg):
     data = json.loads(joinedRoomMsg)
-    print(f"{data['name']} has joined the room at {data['time']} with public key {data['publicKey']}")
+    print(f"{data['name']} has joined the room at {data['time']}")
     emit('joinedRoom', joinedRoomMsg, broadcast = True)
 
 @socketio.on('leftRoom')
