@@ -15,11 +15,11 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
         <script type="text/javascript">
 
-        const socket = io();
+        let keyPair;
 
         (async function() {
 
-            let keyPair = await window.crypto.subtle.generateKey(
+            keyPair = await window.crypto.subtle.generateKey(
             {
                 name: "RSA-OAEP",
                 modulusLength: 4096,
@@ -28,18 +28,7 @@
             },
             true,
             ["encrypt", "decrypt"],
-            );
-
-            socket.on('connect', function() {
-                console.log("Connected to server");
-                console.log(keyPair.publicKey)
-                joinRoom();
-            });
-
-            socket.on('disconnect', function() {
-                console.log("Disconnected from server");
-                leftRoom();
-            });
+            )
 
             function encodeMessage(msg) {
                 let enc = new TextEncoder;
@@ -51,89 +40,104 @@
                     {
                         name: "RSA-OAEP"
                     },
-                    keyPair.publicKey,
+                    key.publicKey,
                     encodeMessage(msg)
                 );
                 return ciphertext;
             }
 
-            function sendMessage() {
-                var messageInput = document.getElementById('messageInput');
-                if(messageInput.value === "") return;
-                var date = new Date();
-                var message = {
-                    msg : encryptMessage(messageInput.value),
-                    name : sessionStorage.getItem("displayName"),
-                    time : date.toLocaleTimeString('en-US')
-                };
-                var jsonMessage = JSON.stringify(message);
-                socket.emit('message', jsonMessage);
-                messageInput.value = '';
-            }
-
-            function joinRoom() {
-                var date = new Date();
-                const joinRoomMsg = {
-                    name : sessionStorage.getItem("displayName"),
-                    time : date.toLocaleTimeString('en-US'),
-                    publicKey : keyPair.publicKey.value
-                };
-                const jsonJoinedRoomMsg = JSON.stringify(joinedRoomMsg);
-                socket.emit('joinedRoom', jsonJoinedRoomMsg);
-            }
-
-            function leftRoom() {
-                var date = new Date();
-                const leftRoomMsg = {
-                    name : sessionStorage.getItem("displayName"),
-                    time : date.toLocaleTimeString('en-US')
-                };
-                const jsonLeftRoomMsg = JSON.stringify(leftRoomMsg);
-                socket.emit('leftRoom', jsonLeftRoomMsg);
-                socket.disconnect();
-            }
-
-            messageInput.addEventListener('keydown', (event) => {
-                if(event.key === 'Enter'){
-                    sendMessage();
-                }
-            })
-            
-            const sendButton = document.getElementById("sendButton");
-            const leaveButton = document.getElementById("leaveButton");
-            sendButton.addEventListener('click', sendMessage);
-            leaveButton.addEventListener('click', leftRoom);
-
-            //debug purposes
-            socket.onAny(event => {
-                console.log(`got ${event}`);
-            });
-
-            socket.on("joinedRoom", (event) => {
-                var jsonJoinedRoom = JSON.parse(event);
-                console.log("New person joined room: ", jsonJoinedRoom);
-                var messageDiv = document.getElementById('messages');
-                var joinedRoomString = "" + jsonJoinedRoom.time + " | " + jsonJoinedRoom.name + " has joined the room!";
-                messageDiv.innerHTML += '<p>' + joinedRoomString + '</p>';
-            })
-
-            socket.on("leftRoom", (event) => {
-                var jsonLeftRoom = JSON.parse(event);
-                console.log("New person left room: ", jsonLeftRoom);
-                var messageDiv = document.getElementById('messages');
-                var leftRoomString = "" + jsonLeftRoom.time + " | " + jsonLeftRoom.name + " has left the room!";
-                messageDiv.innerHTML += '<p>' + leftRoomString + '</p>';
-            })
-
-            socket.on("message", (event) => {
-                var jsonMessage = JSON.parse(event);
-                console.log("Message from server: ", jsonMessage);
-                var messageDiv = document.getElementById('messages');
-                var msgString = "" + jsonMessage.time + " | " + jsonMessage.name + ": " + jsonMessage.msg;
-                messageDiv.innerHTML += '<p>' + msgString + '</p>';
-            });
-
         })();
+
+        const socket = io();
+
+        socket.on('connect', function() {
+            console.log("Connected to server");
+            joinRoom();
+        });
+
+        function joinRoom() {
+            const date = new Date();
+            const joinRoomMsg = {
+                name : sessionStorage.getItem("displayName"),
+                time : date.toLocaleTimeString('en-US'),
+            };
+            const jsonJoinedRoomMsg = JSON.stringify(joinRoomMsg);
+            socket.emit('joinedRoom', jsonJoinedRoomMsg);
+        }
+
+        socket.on('disconnect', function() {
+            console.log("Disconnected from server");
+            leaveRoom();
+        });
+
+        function leaveRoom() {
+            var date = new Date();
+            const leftRoomMsg = {
+                name : sessionStorage.getItem("displayName"),
+                time : date.toLocaleTimeString('en-US')
+            };
+            const jsonLeftRoomMsg = JSON.stringify(leftRoomMsg);
+            socket.emit('leftRoom', jsonLeftRoomMsg);
+            socket.disconnect();
+        }
+
+        const leaveButton = document.getElementById("leaveButton");
+        leaveButton.addEventListener('click', leaveRoom);
+
+        function sendMessage() {
+            var messageInput = document.getElementById('messageInput');
+            if(messageInput.value === "") return;
+            var date = new Date();
+            var message = {
+                msg : messageInput.value,
+                name : sessionStorage.getItem("displayName"),
+                time : date.toLocaleTimeString('en-US')
+            };
+            var jsonMessage = JSON.stringify(message);
+            socket.emit('message', jsonMessage);
+            messageInput.value = '';
+        }
+
+        const sendButton = document.getElementById("sendButton");
+        sendButton.addEventListener('click', sendMessage);
+
+        messageInput.addEventListener('keydown', (event) => {
+            if(event.key === 'Enter'){
+                sendMessage();
+            }
+        });
+
+        function displayMessage(message){
+            var messageDiv = document.getElementById('messages');
+            messageDiv.innerHTML += '<p>' + message + '</p>';
+        }
+        
+
+        //debug purposes
+        socket.onAny(event => {
+            console.log(`got ${event}`);
+        });
+
+        socket.on("joinedRoom", (event) => {
+            var jsonJoinedRoom = JSON.parse(event);
+            console.log("New person joined room: ", jsonJoinedRoom);
+            var joinedRoomString = "" + jsonJoinedRoom.time + " | " + jsonJoinedRoom.name + " has joined the room!";
+            displayMessage(joinedRoomString);
+        });
+
+        socket.on("leftRoom", (event) => {
+            var jsonLeftRoom = JSON.parse(event);
+            console.log("New person left room: ", jsonLeftRoom);
+            var leftRoomString = "" + jsonLeftRoom.time + " | " + jsonLeftRoom.name + " has left the room!";
+            displayMessage(leftRoomString);
+        });
+
+        socket.on("message", (event) => {
+            var jsonMessage = JSON.parse(event);
+            console.log("Message from server: ", jsonMessage);
+            var msgString = "" + jsonMessage.time + " | " + jsonMessage.name + ": " + jsonMessage.msg;
+            displayMessage(msgString);
+        });
 
         </script>
     </body>

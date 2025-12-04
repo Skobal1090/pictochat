@@ -13,6 +13,7 @@ except FileNotFoundError:
 app = Flask(__name__)
 app.config['SECRET_KEY'] = envVars[0]
 socketio = SocketIO(app)
+activeConnections = []
 
 @app.route('/')
 def home():
