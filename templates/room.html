@@ -130,6 +130,11 @@
             console.log(`got ${event}`);
         });
 
+        socket.on("hostAssigned", (event) => {
+            host = true;
+            console.log("You are the host of this room.");
+        });
+
         socket.on("joinedRoom", (event) => {
             var jsonJoinedRoom = JSON.parse(event);
             console.log("New person joined room: ", jsonJoinedRoom);

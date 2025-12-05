@@ -28,9 +28,11 @@ def handle_connect(joinedRoomMsg):
     data = json.loads(joinedRoomMsg)
     for user in activeConnections:
         if user[0] == data['name']:
-            emit('nameExists', joinedRoomMsg, room=request.sid)
+            emit('nameExists', joinedRoomMsg, to=request.sid)
             print(f"Name {data['name']} already exists. Connection rejected.")
             return
+    if(len(activeConnections) == 0):
+        emit('hostAssigned', joinedRoomMsg, to=request.sid)
     activeConnections.append((data['name'], request.sid))
     print(f"{data['name']} has joined the room at {data['time']}")
     print(f"Active Connections: {activeConnections}")
