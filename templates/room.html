@@ -30,22 +30,6 @@
             ["encrypt", "decrypt"],
             )
 
-            function encodeMessage(msg) {
-                let enc = new TextEncoder;
-                return enc.encode(msg);
-            }
-
-            async function encryptMessage(msg, key) {
-                let ciphertext = await window.crypto.subtle.encrypt(
-                    {
-                        name: "RSA-OAEP"
-                    },
-                    key.publicKey,
-                    encodeMessage(msg)
-                );
-                return ciphertext;
-            }
-
         })();
 
         const socket = io();
@@ -84,12 +68,38 @@
         const leaveButton = document.getElementById("leaveButton");
         leaveButton.addEventListener('click', leaveRoom);
 
-        function sendMessage() {
+        async function encryptMessage(msg, key) {
+            let ciphertext = await window.crypto.subtle.encrypt(
+                {
+                    name: "RSA-OAEP"
+                },
+                key,
+                new TextEncoder().encode(msg)
+            );
+            return btoa(String.fromCharCode(...new Uint8Array(ciphertext))); //encode to base64
+        }
+
+        async function decryptMessage(msg, key) {
+            let binaryString = atob(msg); //decode from base64
+            let bytes = new Uint8Array([...binaryString].map(char => char.charCodeAt(0)));
+            let plaintext = await window.crypto.subtle.decrypt(
+                {
+                    name: "RSA-OAEP"
+                },
+                key,
+                bytes
+            );
+            let dec = new TextDecoder;
+            return dec.decode(plaintext);
+            
+        }
+
+        async function sendMessage() {
             var messageInput = document.getElementById('messageInput');
             if(messageInput.value === "") return;
             var date = new Date();
             var message = {
-                msg : messageInput.value,
+                msg : await encryptMessage(messageInput.value, keyPair.publicKey),
                 name : sessionStorage.getItem("displayName"),
                 time : date.toLocaleTimeString('en-US')
             };
@@ -132,10 +142,10 @@
             displayMessage(leftRoomString);
         });
 
-        socket.on("message", (event) => {
+        socket.on("message", async (event) => {
             var jsonMessage = JSON.parse(event);
             console.log("Message from server: ", jsonMessage);
-            var msgString = "" + jsonMessage.time + " | " + jsonMessage.name + ": " + jsonMessage.msg;
+            var msgString = "" + jsonMessage.time + " | " + jsonMessage.name + ": " + await decryptMessage(jsonMessage.msg, keyPair.privateKey);
             displayMessage(msgString);
         });
 
