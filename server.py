@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, send, emit
 import json
 
@@ -26,13 +26,22 @@ def room():
 @socketio.on('joinedRoom')
 def handle_connect(joinedRoomMsg):
     data = json.loads(joinedRoomMsg)
+    for user in activeConnections:
+        if user[0] == data['name']:
+            emit('nameExists', joinedRoomMsg, room=request.sid)
+            print(f"Name {data['name']} already exists. Connection rejected.")
+            return
+    activeConnections.append((data['name'], request.sid))
     print(f"{data['name']} has joined the room at {data['time']}")
+    print(f"Active Connections: {activeConnections}")
     emit('joinedRoom', joinedRoomMsg, broadcast = True)
 
 @socketio.on('leftRoom')
 def handle_disconnect(leftRoomMsg):
     data = json.loads(leftRoomMsg)
     print(f"{data['name']} has left the room at {data['time']}")
+    activeConnections.remove((next(user for user in activeConnections if user[0] == data['name'])))
+    print(f"Active Connections: {activeConnections}")
     emit('leftRoom', leftRoomMsg, broadcast = True)
 
 @socketio.on('message')
