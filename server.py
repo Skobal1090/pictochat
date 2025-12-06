@@ -49,7 +49,7 @@ def handle_disconnect(leftRoomMsg):
 @socketio.on('message')
 def handle_message(msg):
     data = json.loads(msg)
-    print(f"Message From: {data['name']}: {data['msg']} \n Time: {data['time']}")
+    print(f"Message From: {data['name']}: {data['payload']['msg']} \n Time: {data['time']}")
     emit('message', msg, broadcast=True)
 
 
