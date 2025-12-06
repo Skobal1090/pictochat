@@ -52,6 +52,11 @@ def handle_message(msg):
     print(f"Message From: {data['name']}: {data['payload']['msg']} \n Time: {data['time']}")
     emit('message', msg, broadcast=True)
 
+@socketio.on('sendSessionKey')
+def handle_sendSessionKey(sessionKeyMsg):
+    print(f"SessionKeyMsg {sessionKeyMsg}")
+    emit('recieveSessionKey', sessionKeyMsg, broadcast=True)
+
 
 if __name__ == "__main__" :
     socketio.run(app, debug=True, host="0.0.0.0", allow_unsafe_werkzeug=True)

@@ -18,36 +18,52 @@
         let keyPair;
         let sessionKey;
         let host = false;
+        let publicKeys = [];
 
-        (async function() {
 
-            keyPair = await window.crypto.subtle.generateKey(
-                {
-                    name: "RSA-OAEP",
-                    modulusLength: 4096,
-                    publicExponent: new Uint8Array([1, 0, 1]),
-                    hash: "SHA-256",
-                },
-                true,
-                ["encrypt", "decrypt"],
-            )
-
-        })();
+        let keyPairPromise = window.crypto.subtle.generateKey(
+            {
+                name: "RSA-OAEP",
+                modulusLength: 4096,
+                publicExponent: new Uint8Array([1, 0, 1]),
+                hash: "SHA-256",
+            },
+            true,
+            ["encrypt", "decrypt"],
+        )
 
         const socket = io();
-
-        socket.on('connect', function() {
+        
+        socket.on('connect', async function() {
             console.log("Connecting to server");
+            keyPair = await keyPairPromise
+            console.log(keyPair.publicKey);
             joinRoom();
         });
 
-        function joinRoom() {
+        function encodeMessage64(msg) {
+            let enc = new TextEncoder();
+            msg = enc.encode(msg)
+            return btoa(String.fromCharCode(...new Uint8Array(msg)))
+        }
+
+        function decodeMessage64(msg) {
+            let dec = new TextDecoder();
+            let binaryString = atob(msg); //decode from base64
+            let bytes = new Uint8Array([...binaryString].map(char => char.charCodeAt(0)));
+            return dec.decode(bytes);
+        }
+
+
+        async function joinRoom() {
             const date = new Date();
             const joinRoomMsg = {
                 name : sessionStorage.getItem("displayName"),
                 time : date.toLocaleTimeString('en-US'),
+                publicKey : await window.crypto.subtle.exportKey('jwk', keyPair.publicKey)
             };
             const jsonJoinedRoomMsg = JSON.stringify(joinRoomMsg);
+            console.log(jsonJoinedRoomMsg);
             socket.emit('joinedRoom', jsonJoinedRoomMsg);
         }
 
@@ -93,6 +109,18 @@
             return btoa(String.fromCharCode(...new Uint8Array(ciphertext))); //encode to base64
         }
 
+        async function sendSessionKeys(){
+            generateSessionKey();
+            const sessionJson = {
+                key: await window.crypto.subtle.exportKey('jwk', sessionKey)
+            }
+            console.log("SessionJson???", JSON.stringify(sessionJson));
+            publicKeys.forEach(async pubKey => {
+                console.log(pubKey);
+                socket.emit('sendSessionKey', await encryptSessionKey(JSON.stringify(sessionJson), pubKey));
+            });
+        }
+
         //message containing session key
         async function decryptSessionKey(msg, key) {
             let binaryString = atob(msg); //decode from base64
@@ -105,8 +133,7 @@
                 bytes
             );
             let dec = new TextDecoder;
-            return dec.decode(plaintext);
-            
+            return dec.decode(plaintext);  
         }
 
         //encrypt message using session key
@@ -182,11 +209,26 @@
             generateSessionKey();
         });
 
-        socket.on("joinedRoom", (event) => {
-            var jsonJoinedRoom = JSON.parse(event);
+        socket.on("joinedRoom", async (event) => {
+            const jsonJoinedRoom = JSON.parse(event);
             console.log("New person joined room: ", jsonJoinedRoom);
-            var joinedRoomString = "" + jsonJoinedRoom.time + " | " + jsonJoinedRoom.name + " has joined the room!";
+            const joinedRoomString = "" + jsonJoinedRoom.time + " | " + jsonJoinedRoom.name + " has joined the room!";
             displayMessage(joinedRoomString);
+            if (host) {
+                pubKey = await window.crypto.subtle.importKey(
+                    "jwk", 
+                    jsonJoinedRoom.publicKey, 
+                    {
+                        name: "RSA-OAEP",
+                        hash: "SHA-256"
+                    },
+                    true, 
+                    ['encrypt']
+                );
+                console.log("New public key recieved: ", pubKey);
+                publicKeys.push(pubKey);
+                sendSessionKeys();
+            }
         });
 
         socket.on("nameExists", (event) => {
@@ -200,6 +242,29 @@
             var leftRoomString = "" + jsonLeftRoom.time + " | " + jsonLeftRoom.name + " has left the room!";
             displayMessage(leftRoomString);
         });
+
+        socket.on('recieveSessionKey', async (event) => {
+            try {
+                console.log("attempting to parse: ", event);
+                maybeJson = await decryptSessionKey(event, keyPair.privateKey)
+                console.log("maybeJson? ", maybeJson);
+                const jsonSessionKey = JSON.parse(maybeJson);
+                console.log("Recieved new session key: ", jsonSessionKey);
+                sessionKey = await window.crypto.subtle.importKey(
+                    "jwk", 
+                    jsonSessionKey.key, 
+                    {
+                        name: "AES-GCM",
+                    },
+                    true, 
+                    ['encrypt','decrypt']
+                );
+                console.log("Session Key assigned to: ", sessionKey);
+            }
+            catch (exception){
+                console.log(exception);
+            }
+        })
 
         socket.on("message", async (event) => {
             var jsonMessage = JSON.parse(event);
