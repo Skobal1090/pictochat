@@ -3,11 +3,14 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style> canvas{border: 1px solid black} </style>
         <title>{{ title }}</title>
     </head>
     <body>
         <h1>{{ heading }}</h1>
+        <canvas onmousemove="draw(event)"id="drawableCanvas" width="400" height="250"></canvas>
         <input type="text" id="messageInput" placeholder="Type your message">
+        <button id="drawButton">Draw</button>
         <button id="sendButton">Send</button>
         <a href="../" ><button id="leaveButton">Leave Room</button></a>
         <div id="messages"></div>
@@ -147,7 +150,6 @@
                 key,
                 new TextEncoder().encode(msg)
             );
-            console.log(iv);
             return {msg : btoa(String.fromCharCode(...new Uint8Array(ciphertext))), iv};
         }
 
@@ -156,7 +158,6 @@
             const binaryString = atob(payload.msg); //decode from base64
             const bytes = new Uint8Array([...binaryString].map(char => char.charCodeAt(0))); //splits binaryString into individual bytes
             const iv = new Uint8Array(Object.values(payload.iv));
-            console.log(iv);
             const plaintext = await window.crypto.subtle.decrypt(
                 {
                     name: "AES-GCM",
@@ -195,6 +196,30 @@
         function displayMessage(message){
             var messageDiv = document.getElementById('messages');
             messageDiv.innerHTML += '<p>' + message + '</p>';
+        }
+
+        let drawableCanvas = document.getElementById("drawableCanvas");
+        let canvasCTX = drawableCanvas.getContext("2d");
+
+        function getMousePos(canvas, event){
+            var rect = canvas.getBoundingClientRect();
+            return {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            };
+        }
+
+        function draw(canvas){
+            let pos = getMousePos(canvas, event);
+            context.fillStyle = "#000000";
+            context.fillRect (pos.x, pos.y, 4, 4);
+        }
+        
+        function createCanvas(props={},children=[]){
+            let el = document.createElement("canvas");
+            Object.assign(el, props);
+            el.append(...children);
+            return el;
         }
         
 
