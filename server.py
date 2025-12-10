@@ -2,7 +2,6 @@ from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, send, emit
 import json
 
-
 envVars = []
 try:
     with open('.env.local') as file:
@@ -57,6 +56,11 @@ def handle_sendSessionKey(sessionKeyMsg):
     print(f"SessionKeyMsg {sessionKeyMsg}")
     emit('recieveSessionKey', sessionKeyMsg, broadcast=True)
 
+@socketio.on('sendCanvas')
+def handle_canvas(msg):
+    data = json.loads(msg)
+    print(f"{data['name']} send a drawing at: {data['time']}")
+    emit('receiveCanvas', msg, broadcast=True)
 
 if __name__ == "__main__" :
     socketio.run(app, debug=True, host="0.0.0.0", allow_unsafe_werkzeug=True)
