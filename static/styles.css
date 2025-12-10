@@ -1,3 +1,22 @@
 body {
     background-color: #AFAFAF;
+    height: 100vh;
+}
+#inputControls{
+    height: 100px;
+    align-items: center;
+}
+
+div.invisible {
+    display: none !important;
+}
+#messages{
+    flex-grow: 1;
+    overflow-y: scroll;
+}
+#container{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
 }

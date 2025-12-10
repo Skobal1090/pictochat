@@ -8,25 +8,29 @@
         <title>{{ title }}</title>
     </head>
         <body>
-            <div id="header">
-                <h1>{{ heading }}</h1>
-                <a href="../" ><button id="leaveButton">Leave Room</button></a>
-            </div>
-            <div id="messages"></div>
-            <div id="inputControls">
-                <div id="drawControls" style="display: none;">
-                    <canvas onmousemove="draw(event)" id="drawableCanvas" width="100" height="100"></canvas>
-                    <button id="clearDrawing">Clear</button>
-                    <button id="sendDrawing">Send</button>
-                    <button id="textButton">Text</button>
+            <div id="container">
+                <div id="header">
+                    <h1>{{ heading }}</h1>
+                    <a href="../" ><button id="leaveButton">Leave Room</button></a>
                 </div>
-                <div id="textControls">
-                    <input type="text" id="messageInput" placeholder="Type your message">
-                    <button id="drawButton">Draw</button>
-                    <button id="sendButton">Send</button>
+                <div id="messages"></div>
+                <div id="inputControls">
+                    <div id="drawControls" class="invisible">
+                        <canvas onmousemove="draw(event)" id="drawableCanvas" width="100" height="100"></canvas>
+                        <div id="drawButtons">
+                            <button id="clearDrawing">Clear</button>
+                            <button id="sendDrawing">Send</button>
+                            <button id="textButton">Text</button>
+                        </div>
+                    </div>
+                    <div id="textControls">
+                        <input type="text" id="messageInput" placeholder="Type your message">
+                        <button id="drawButton">Draw</button>
+                        <button id="sendButton">Send</button>
+                    </div>
                 </div>
             </div>
-            
+
             <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
             <script type="text/javascript">
 
@@ -209,13 +213,13 @@
                 const textControls = document.getElementById('textControls');
                 const drawControls = document.getElementById('drawControls');
                 
-                if(textControls.style.display === "block"){
-                    textControls.style.display = "none";
-                    drawControls.style.display = "block";
+                if(textControls.classList.contains('invisible')){
+                    textControls.classList.remove('invisible');
+                    drawControls.classList.add('invisible');
                 }
                 else {
-                    textControls.style.display = "block";
-                    drawControls.style.display = "none";
+                    textControls.classList.add('invisible');
+                    drawControls.classList.remove('invisible');
                 }
                 
             }
