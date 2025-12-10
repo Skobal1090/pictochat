@@ -8,7 +8,8 @@
     </head>
     <body>
         <h1>{{ heading }}</h1>
-        <canvas onmousemove="draw(event)"id="drawableCanvas" width="400" height="250"></canvas>
+        <button id="clearDrawing" style="visibility: hidden;">Clear</button>
+        <canvas onmousemove="draw(event)" id="drawableCanvas" width="400" height="250" style="visibility: hidden;"></canvas>
         <input type="text" id="messageInput" placeholder="Type your message">
         <button id="drawButton">Draw</button>
         <button id="sendButton">Send</button>
@@ -88,6 +89,13 @@
 
         const leaveButton = document.getElementById("leaveButton");
         leaveButton.addEventListener('click', leaveRoom);
+
+        const drawButton = document.getElementById("drawButton");
+        drawButton.addEventListener('click', showDrawableCanvas);
+
+        const clearButton = document.getElementById("clearDrawing");
+        clearButton.addEventListener('click', clearDrawing);
+
 
         async function generateSessionKey(){
             sessionKey = await window.crypto.subtle.generateKey(
@@ -200,6 +208,15 @@
 
         let drawableCanvas = document.getElementById("drawableCanvas");
         let canvasCTX = drawableCanvas.getContext("2d");
+        let mouseDown = false;
+
+
+        function showDrawableCanvas() {
+            let canvasVis = drawableCanvas.style.visibility;
+            let clearVis = clearButton.style.visibility;
+            clearButton.style.visibility = clearVis == "visible" ? 'hidden' : "visible"
+            drawableCanvas.style.visibility = canvasVis == "visible" ? 'hidden' : "visible"
+        }
 
         function getMousePos(canvas, event){
             var rect = canvas.getBoundingClientRect();
@@ -209,10 +226,26 @@
             };
         }
 
-        function draw(canvas){
-            let pos = getMousePos(canvas, event);
-            context.fillStyle = "#000000";
-            context.fillRect (pos.x, pos.y, 4, 4);
+        window.addEventListener("mousedown", (event) => {
+            mouseDown = true;
+        })
+
+        window.addEventListener("mouseup", (event) => {
+            mouseDown = false;
+        })
+
+        function draw(event){
+            let pos = getMousePos(drawableCanvas, event);
+            console.log("hello from the draw function");
+            if(mouseDown){
+                canvasCTX.fillStyle = "#000000";
+                canvasCTX.fillRect (pos.x, pos.y, 3, 3);
+            }
+        }
+
+        function clearDrawing(){
+            console.log("Cleared canvas");
+            canvasCTX.reset();
         }
         
         function createCanvas(props={},children=[]){
