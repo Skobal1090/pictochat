@@ -9,7 +9,8 @@
     <body>
         <h1>{{ heading }}</h1>
         <button id="clearDrawing" style="visibility: hidden;">Clear</button>
-        <canvas onmousemove="draw(event)" id="drawableCanvas" width="400" height="250" style="visibility: hidden;"></canvas>
+        <button id="sendDrawing">send drawing</button>
+        <canvas onmousemove="draw(event)" id="drawableCanvas" width="100" height="100" style="visibility: hidden;"></canvas>
         <input type="text" id="messageInput" placeholder="Type your message">
         <button id="drawButton">Draw</button>
         <button id="sendButton">Send</button>
@@ -39,25 +40,9 @@
         const socket = io();
         
         socket.on('connect', async function() {
-            console.log("Connecting to server");
             keyPair = await keyPairPromise
-            console.log(keyPair.publicKey);
             joinRoom();
         });
-
-        function encodeMessage64(msg) {
-            let enc = new TextEncoder();
-            msg = enc.encode(msg)
-            return btoa(String.fromCharCode(...new Uint8Array(msg)))
-        }
-
-        function decodeMessage64(msg) {
-            let dec = new TextDecoder();
-            let binaryString = atob(msg); //decode from base64
-            let bytes = new Uint8Array([...binaryString].map(char => char.charCodeAt(0)));
-            return dec.decode(bytes);
-        }
-
 
         async function joinRoom() {
             const date = new Date();
@@ -67,12 +52,10 @@
                 publicKey : await window.crypto.subtle.exportKey('jwk', keyPair.publicKey)
             };
             const jsonJoinedRoomMsg = JSON.stringify(joinRoomMsg);
-            console.log(jsonJoinedRoomMsg);
             socket.emit('joinedRoom', jsonJoinedRoomMsg);
         }
 
         socket.on('disconnect', function() {
-            console.log("Disconnected from server");
             leaveRoom();
         });
 
@@ -125,9 +108,7 @@
             const sessionJson = {
                 key: await window.crypto.subtle.exportKey('jwk', sessionKey)
             }
-            console.log("SessionJson???", JSON.stringify(sessionJson));
             publicKeys.forEach(async pubKey => {
-                console.log(pubKey);
                 socket.emit('sendSessionKey', await encryptSessionKey(JSON.stringify(sessionJson), pubKey));
             });
         }
@@ -236,7 +217,6 @@
 
         function draw(event){
             let pos = getMousePos(drawableCanvas, event);
-            console.log("hello from the draw function");
             if(mouseDown){
                 canvasCTX.fillStyle = "#000000";
                 canvasCTX.fillRect (pos.x, pos.y, 3, 3);
@@ -244,18 +224,47 @@
         }
 
         function clearDrawing(){
-            console.log("Cleared canvas");
             canvasCTX.reset();
         }
+
+        let sendDrawingButton = document.getElementById("sendDrawing");
+        sendDrawingButton.addEventListener('click', sendCanvas);
         
-        function createCanvas(props={},children=[]){
-            let el = document.createElement("canvas");
-            Object.assign(el, props);
-            el.append(...children);
-            return el;
+        async function sendCanvas() {
+            const canvasCords = drawableCanvas.getBoundingClientRect();
+            const canvasData = canvasCTX.getImageData(0,0, canvasCords.width, canvasCords.height);
+            const imageData = {
+                width : canvasData.width,
+                height : canvasData.height,
+                data : canvasData.data
+            };
+            if(imageData === null) return;
+            const date = new Date();
+            const canvasMsg = {
+                payload : await encryptMessage(JSON.stringify(imageData), sessionKey),
+                name : sessionStorage.getItem("displayName"),
+                time : date.toLocaleTimeString('en-US')
+            };
+            const jsonCanvasMsg = JSON.stringify(canvasMsg);
+            socket.emit('sendCanvas', jsonCanvasMsg);
         }
         
-
+        function displayImage(imageData){
+            let newCanvas = document.createElement("canvas");
+            let newCanvasCTX = newCanvas.getContext("2d");
+            newCanvas.width = imageData.width;
+            newCanvas.height = imageData.height;
+            let arr = new Uint8ClampedArray(Object.values(imageData.data));
+            let newImageData = new ImageData(arr, imageData.width, imageData.height);
+            newCanvasCTX.putImageData(newImageData, 0, 0);
+            const newUrl = newCanvas.toDataURL();
+            const newImage = new Image();
+            newImage.src = newUrl;
+            newImage.style.border = "1px solid black";
+            let messageDiv = document.getElementById("messages");
+            messageDiv.appendChild(newImage);
+        }
+    
         //debug purposes
         socket.onAny(event => {
             console.log(`got ${event}`);
@@ -263,13 +272,11 @@
 
         socket.on("hostAssigned", (event) => {
             host = true;
-            console.log("You are the host of this room.");
             generateSessionKey();
         });
 
         socket.on("joinedRoom", async (event) => {
             const jsonJoinedRoom = JSON.parse(event);
-            console.log("New person joined room: ", jsonJoinedRoom);
             const joinedRoomString = "" + jsonJoinedRoom.time + " | " + jsonJoinedRoom.name + " has joined the room!";
             displayMessage(joinedRoomString);
             if (host) {
@@ -283,7 +290,6 @@
                     true, 
                     ['encrypt']
                 );
-                console.log("New public key recieved: ", pubKey);
                 publicKeys.push(pubKey);
                 sendSessionKeys();
             }
@@ -296,18 +302,14 @@
 
         socket.on("leftRoom", (event) => {
             var jsonLeftRoom = JSON.parse(event);
-            console.log("New person left room: ", jsonLeftRoom);
             var leftRoomString = "" + jsonLeftRoom.time + " | " + jsonLeftRoom.name + " has left the room!";
             displayMessage(leftRoomString);
         });
 
         socket.on('recieveSessionKey', async (event) => {
             try {
-                console.log("attempting to parse: ", event);
                 maybeJson = await decryptSessionKey(event, keyPair.privateKey)
-                console.log("maybeJson? ", maybeJson);
                 const jsonSessionKey = JSON.parse(maybeJson);
-                console.log("Recieved new session key: ", jsonSessionKey);
                 sessionKey = await window.crypto.subtle.importKey(
                     "jwk", 
                     jsonSessionKey.key, 
@@ -317,7 +319,6 @@
                     true, 
                     ['encrypt','decrypt']
                 );
-                console.log("Session Key assigned to: ", sessionKey);
             }
             catch (exception){
                 console.log(exception);
@@ -326,10 +327,15 @@
 
         socket.on("message", async (event) => {
             var jsonMessage = JSON.parse(event);
-            console.log("Message from server: ", jsonMessage);
             var msgString = "" + jsonMessage.time + " | " + jsonMessage.name + ": " + await decryptMessage(jsonMessage.payload, sessionKey);
             displayMessage(msgString);
         });
+
+        socket.on('receiveCanvas', async (event) => {
+            const jsonCanvasMsg = JSON.parse(event);
+            const canvasData = await decryptMessage(jsonCanvasMsg.payload, sessionKey);
+            displayImage(JSON.parse(canvasData));
+        })
 
         </script>
     </body>
