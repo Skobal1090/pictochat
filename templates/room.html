@@ -201,7 +201,7 @@
 
             function displayMessage(message){
                 var messageDiv = document.getElementById('messages');
-                messageDiv.innerHTML += '<p>' + message + '</p>';
+                messageDiv.innerHTML ='<div class="singleMessage">' + '\n' + '  <p>' +  message + '  </p>' + '</div>' + messageDiv.innerHTML;
             }
 
             let drawableCanvas = document.getElementById("drawableCanvas");
@@ -275,7 +275,8 @@
                 clearDrawing();
             }
             
-            function displayImage(imageData){
+            function displayImage(imageData, name, time){
+                console.log(name, time)
                 let newCanvas = document.createElement("canvas");
                 let newCanvasCTX = newCanvas.getContext("2d");
                 newCanvas.width = imageData.width;
@@ -284,11 +285,8 @@
                 let newImageData = new ImageData(arr, imageData.width, imageData.height);
                 newCanvasCTX.putImageData(newImageData, 0, 0);
                 const newUrl = newCanvas.toDataURL();
-                const newImage = new Image();
-                newImage.src = newUrl;
-                newImage.style.border = "1px solid black";
                 let messageDiv = document.getElementById("messages");
-                messageDiv.appendChild(newImage);
+                messageDiv.innerHTML ='<div class="singleMessage">' + '\n' + '  <p>' + "  " + time + " | " + name + ": " + '<img src=' + newUrl + '>' + '</p>' + '</div>' + messageDiv.innerHTML;
             }
         
             //debug purposes
@@ -359,9 +357,9 @@
 
             socket.on('receiveCanvas', async (event) => {
                 const jsonCanvasMsg = JSON.parse(event);
+                console.log("canvas: ", jsonCanvasMsg);
                 const canvasData = await decryptMessage(jsonCanvasMsg.payload, sessionKey);
-                displayMessage("" + jsonCanvasMsg.time + " | " + jsonCanvasMsg.name + ": ");
-                displayImage(JSON.parse(canvasData));
+                displayImage(JSON.parse(canvasData), jsonCanvasMsg.name, jsonCanvasMsg.time);
             })
 
             </script>

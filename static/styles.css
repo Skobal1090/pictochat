@@ -6,17 +6,38 @@ body {
     height: 100px;
     align-items: center;
 }
+/*
+img {
+    border: 1px solid black;
+}
+*/
+canvas{
+    border: 1px solid black;
+}
 
 div.invisible {
     display: none !important;
 }
 #messages{
-    flex-grow: 1;
+    margin: auto;
+    display: flex;
     overflow-y: scroll;
+    flex-direction: column-reverse;
+    background-image: url(paperbg.jpg);
+    border: 2px solid black;
+    height: 75%;
+    width: 800px;
+    position: static;
+    align-items: center;
+}
+.singleMessage{
+    width: 700px;
+    border-bottom: 1px solid #AFAFAF;
 }
 #container{
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-around;
     height: 100%;
+    align-content: flex-end;
 }
