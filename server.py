@@ -11,7 +11,7 @@ except FileNotFoundError:
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = envVars[0]
-socketio = SocketIO(app)
+socketio = SocketIO(app, max_http_buffer_size=1024*1024*5)
 activeConnections = []
 
 @app.route('/')
@@ -41,7 +41,11 @@ def handle_connect(joinedRoomMsg):
 def handle_disconnect(leftRoomMsg):
     data = json.loads(leftRoomMsg)
     print(f"{data['name']} has left the room at {data['time']}")
-    activeConnections.remove((next(user for user in activeConnections if user[0] == data['name'])))
+    for user in activeConnections:
+        if user[0] == data['name']:
+            activeConnections.remove(user)
+            if(activeConnections): 
+                emit('hostAssigned', leftRoomMsg, to=activeConnections[0][1])
     print(f"Active Connections: {activeConnections}")
     emit('leftRoom', leftRoomMsg, broadcast = True)
 
@@ -53,7 +57,6 @@ def handle_message(msg):
 
 @socketio.on('sendSessionKey')
 def handle_sendSessionKey(sessionKeyMsg):
-    print(f"SessionKeyMsg {sessionKeyMsg}")
     emit('recieveSessionKey', sessionKeyMsg, broadcast=True)
 
 @socketio.on('sendCanvas')

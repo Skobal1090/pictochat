@@ -1,0 +1,61 @@
+body {
+    background-color: #AFAFAF;
+    height: 100vh;
+}
+#inputControls{
+    height: 350px;
+    width: 300px;
+    margin: 10px auto;
+    
+}
+#textControls{
+    display: flex;
+}
+#drawButtons {
+    display: flex;
+    justify-content: end;
+}
+#drawableCanvas{
+    margin-top: 10px;
+}
+#messageInput{
+    flex-grow: 1;
+}
+#clearDrawing{
+    margin-right: auto;
+}
+/*
+img {
+    border: 1px solid black;
+}
+*/
+canvas{
+    border: 1px solid black;
+}
+
+div.invisible {
+    display: none !important;
+}
+#messages{
+    margin: auto;
+    display: flex;
+    overflow-y: scroll;
+    flex-direction: column-reverse;
+    background-image: url(paperbg.jpg);
+    border: 2px solid black;
+    height: 75%;
+    width: 800px;
+    position: static;
+    align-items: center;
+}
+.singleMessage{
+    width: 700px;
+    border-bottom: 1px solid #AAAAAA;
+}
+#container{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    height: 100%;
+    align-content: flex-end;
+}

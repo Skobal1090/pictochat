@@ -1,285 +1,316 @@
     <!DOCTYPE html>
     <html lang="en">
     <head>
+        <link rel="stylesheet" href="/static/styles.css">
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style> canvas{border: 1px solid black} </style>
         <title>{{ title }}</title>
     </head>
-    <body>
-        <h1>{{ heading }}</h1>
-        <button id="clearDrawing" style="visibility: hidden;">Clear</button>
-        <button id="sendDrawing">send drawing</button>
-        <canvas onmousemove="draw(event)" id="drawableCanvas" width="100" height="100" style="visibility: hidden;"></canvas>
-        <input type="text" id="messageInput" placeholder="Type your message">
-        <button id="drawButton">Draw</button>
-        <button id="sendButton">Send</button>
-        <a href="../" ><button id="leaveButton">Leave Room</button></a>
-        <div id="messages"></div>
+        <body>
+            <div id="container">
+                <div id="header">
+                    <h1>{{ heading }}</h1>
+                    <a href="../" ><button id="leaveButton">Leave Room</button></a>
+                </div>
+                <div id="messages"></div>
+                <div id="inputControls">
+                    <div id="drawControls" class="invisible">
+                        <div id="drawButtons">
+                            <button id="clearDrawing">Clear</button>
+                            <button id="textButton">Text</button>
+                            <button id="sendDrawing">Send</button>
+                        </div>
+                         <canvas onmousemove="draw(event)" id="drawableCanvas" width="300" height="200"></canvas>
+                    </div>
+                    <div id="textControls">
+                        <input type="text" id="messageInput" placeholder="Type your message">
+                        <button id="drawButton">Draw</button>
+                        <button id="sendButton">Send</button>
+                    </div>
+                </div>
+            </div>
 
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
-        <script type="text/javascript">
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
+            <script type="text/javascript">
 
-        let keyPair;
-        let sessionKey;
-        let host = false;
-        let publicKeys = [];
-
-
-        let keyPairPromise = window.crypto.subtle.generateKey(
-            {
-                name: "RSA-OAEP",
-                modulusLength: 4096,
-                publicExponent: new Uint8Array([1, 0, 1]),
-                hash: "SHA-256",
-            },
-            true,
-            ["encrypt", "decrypt"],
-        )
-
-        const socket = io();
-        
-        socket.on('connect', async function() {
-            keyPair = await keyPairPromise
-            joinRoom();
-        });
-
-        async function joinRoom() {
-            const date = new Date();
-            const joinRoomMsg = {
-                name : sessionStorage.getItem("displayName"),
-                time : date.toLocaleTimeString('en-US'),
-                publicKey : await window.crypto.subtle.exportKey('jwk', keyPair.publicKey)
-            };
-            const jsonJoinedRoomMsg = JSON.stringify(joinRoomMsg);
-            socket.emit('joinedRoom', jsonJoinedRoomMsg);
-        }
-
-        socket.on('disconnect', function() {
-            leaveRoom();
-        });
-
-        function leaveRoom() {
-            var date = new Date();
-            const leftRoomMsg = {
-                name : sessionStorage.getItem("displayName"),
-                time : date.toLocaleTimeString('en-US')
-            };
-            const jsonLeftRoomMsg = JSON.stringify(leftRoomMsg);
-            socket.emit('leftRoom', jsonLeftRoomMsg);
-            socket.disconnect();
-        }
-
-        const leaveButton = document.getElementById("leaveButton");
-        leaveButton.addEventListener('click', leaveRoom);
-
-        const drawButton = document.getElementById("drawButton");
-        drawButton.addEventListener('click', showDrawableCanvas);
-
-        const clearButton = document.getElementById("clearDrawing");
-        clearButton.addEventListener('click', clearDrawing);
+            let keyPair;
+            let sessionKey;
+            let host = false;
+            let publicKeys = [];
 
 
-        async function generateSessionKey(){
-            sessionKey = await window.crypto.subtle.generateKey(
+            let keyPairPromise = window.crypto.subtle.generateKey(
                 {
-                    name: "AES-GCM",
-                    length: 256,
+                    name: "RSA-OAEP",
+                    modulusLength: 4096,
+                    publicExponent: new Uint8Array([1, 0, 1]),
+                    hash: "SHA-256",
                 },
                 true,
-                ["encrypt", "decrypt"]
+                ["encrypt", "decrypt"],
             )
-        }
 
-        //encrypt message containing session key
-        async function encryptSessionKey(msg, key) {
-            let ciphertext = await window.crypto.subtle.encrypt(
-                {
-                    name: "RSA-OAEP"
-                },
-                key,
-                new TextEncoder().encode(msg)
-            );
-            return btoa(String.fromCharCode(...new Uint8Array(ciphertext))); //encode to base64
-        }
-
-        async function sendSessionKeys(){
-            generateSessionKey();
-            const sessionJson = {
-                key: await window.crypto.subtle.exportKey('jwk', sessionKey)
-            }
-            publicKeys.forEach(async pubKey => {
-                socket.emit('sendSessionKey', await encryptSessionKey(JSON.stringify(sessionJson), pubKey));
+            const socket = io();
+            
+            socket.on('connect', async function() {
+                keyPair = await keyPairPromise
+                joinRoom();
             });
-        }
 
-        //message containing session key
-        async function decryptSessionKey(msg, key) {
-            let binaryString = atob(msg); //decode from base64
-            let bytes = new Uint8Array([...binaryString].map(char => char.charCodeAt(0)));
-            let plaintext = await window.crypto.subtle.decrypt(
-                {
-                    name: "RSA-OAEP"
-                },
-                key,
-                bytes
-            );
-            let dec = new TextDecoder;
-            return dec.decode(plaintext);  
-        }
-
-        //encrypt message using session key
-         async function encryptMessage(msg, key) {
-            const iv = window.crypto.getRandomValues(new Uint8Array(12)); //initialization vector (needed to decrypt as well)
-            const ciphertext = await window.crypto.subtle.encrypt(
-                {
-                    name: "AES-GCM",
-                    iv
-                },
-                key,
-                new TextEncoder().encode(msg)
-            );
-            return {msg : btoa(String.fromCharCode(...new Uint8Array(ciphertext))), iv};
-        }
-
-        //decrypt message using session key
-        async function decryptMessage(payload, key) {
-            const binaryString = atob(payload.msg); //decode from base64
-            const bytes = new Uint8Array([...binaryString].map(char => char.charCodeAt(0))); //splits binaryString into individual bytes
-            const iv = new Uint8Array(Object.values(payload.iv));
-            const plaintext = await window.crypto.subtle.decrypt(
-                {
-                    name: "AES-GCM",
-                    iv,
-                },
-                key,
-                bytes
-            );
-            let dec = new TextDecoder;
-            return dec.decode(plaintext);
-        }
-
-        async function sendMessage() {
-            const messageInput = document.getElementById('messageInput');
-            if(messageInput.value === "") return;
-            const date = new Date();
-            const message = {
-                payload : await encryptMessage(messageInput.value, sessionKey),
-                name : sessionStorage.getItem("displayName"),
-                time : date.toLocaleTimeString('en-US')
-            };
-            const jsonMessage = JSON.stringify(message);
-            socket.emit('message', jsonMessage);
-            messageInput.value = '';
-        }
-
-        const sendButton = document.getElementById("sendButton");
-        sendButton.addEventListener('click', sendMessage);
-
-        messageInput.addEventListener('keydown', (event) => {
-            if(event.key === 'Enter'){
-                sendMessage();
+            async function joinRoom() {
+                const date = new Date();
+                const joinRoomMsg = {
+                    name : sessionStorage.getItem("displayName"),
+                    time : date.toLocaleTimeString('en-US'),
+                    publicKey : await window.crypto.subtle.exportKey('jwk', keyPair.publicKey)
+                };
+                const jsonJoinedRoomMsg = JSON.stringify(joinRoomMsg);
+                socket.emit('joinedRoom', jsonJoinedRoomMsg);
             }
-        });
 
-        function displayMessage(message){
-            var messageDiv = document.getElementById('messages');
-            messageDiv.innerHTML += '<p>' + message + '</p>';
-        }
+            socket.on('disconnect', function() {
+                leaveRoom();
+            });
 
-        let drawableCanvas = document.getElementById("drawableCanvas");
-        let canvasCTX = drawableCanvas.getContext("2d");
-        let mouseDown = false;
-
-
-        function showDrawableCanvas() {
-            let canvasVis = drawableCanvas.style.visibility;
-            let clearVis = clearButton.style.visibility;
-            clearButton.style.visibility = clearVis == "visible" ? 'hidden' : "visible"
-            drawableCanvas.style.visibility = canvasVis == "visible" ? 'hidden' : "visible"
-        }
-
-        function getMousePos(canvas, event){
-            var rect = canvas.getBoundingClientRect();
-            return {
-                x: event.clientX - rect.left,
-                y: event.clientY - rect.top
-            };
-        }
-
-        window.addEventListener("mousedown", (event) => {
-            mouseDown = true;
-        })
-
-        window.addEventListener("mouseup", (event) => {
-            mouseDown = false;
-        })
-
-        function draw(event){
-            let pos = getMousePos(drawableCanvas, event);
-            if(mouseDown){
-                canvasCTX.fillStyle = "#000000";
-                canvasCTX.fillRect (pos.x, pos.y, 3, 3);
+            async function leaveRoom() {
+                var date = new Date();
+                const leftRoomMsg = {
+                    name : sessionStorage.getItem("displayName"),
+                    time : date.toLocaleTimeString('en-US'),
+                    publicKey : await window.crypto.subtle.exportKey('jwk', keyPair.publicKey)
+                };
+                const jsonLeftRoomMsg = JSON.stringify(leftRoomMsg);
+                socket.emit('leftRoom', jsonLeftRoomMsg);
+                socket.disconnect();
             }
-        }
 
-        function clearDrawing(){
-            canvasCTX.reset();
-        }
+            const leaveButton = document.getElementById("leaveButton");
+            leaveButton.addEventListener('click', leaveRoom);
 
-        let sendDrawingButton = document.getElementById("sendDrawing");
-        sendDrawingButton.addEventListener('click', sendCanvas);
+            const drawButton = document.getElementById("drawButton");
+            drawButton.addEventListener('click', toggleCanvas);
+
+            const textButton = document.getElementById("textButton");
+            textButton.addEventListener('click', toggleCanvas);
+
+            const clearButton = document.getElementById("clearDrawing");
+            clearButton.addEventListener('click', clearDrawing);
+
+
+            async function generateSessionKey(){
+                sessionKey = await window.crypto.subtle.generateKey(
+                    {
+                        name: "AES-GCM",
+                        length: 256,
+                    },
+                    true,
+                    ["encrypt", "decrypt"]
+                )
+            }
+
+            //encrypt message containing session key
+            async function encryptSessionKey(msg, key) {
+                let ciphertext = await window.crypto.subtle.encrypt(
+                    {
+                        name: "RSA-OAEP"
+                    },
+                    key,
+                    new TextEncoder().encode(msg)
+                );
+                return btoa(String.fromCharCode(...new Uint8Array(ciphertext))); //encode to base64
+            }
+
+            async function sendSessionKeys(){
+                await generateSessionKey();
+                const sessionJson = {
+                    key: await window.crypto.subtle.exportKey('jwk', sessionKey)
+                }
+                publicKeys.forEach(async pubKey => {
+                    socket.emit('sendSessionKey', await encryptSessionKey(JSON.stringify(sessionJson), pubKey));
+                });
+            }
+
+            //message containing session key
+            async function decryptSessionKey(msg, key) {
+                let binaryString = atob(msg); //decode from base64
+                let bytes = new Uint8Array([...binaryString].map(char => char.charCodeAt(0)));
+                let plaintext = await window.crypto.subtle.decrypt(
+                    {
+                        name: "RSA-OAEP"
+                    },
+                    key,
+                    bytes
+                );
+                let dec = new TextDecoder;
+                return dec.decode(plaintext);  
+            }
+
+            function encode64(arr){
+                newStr = "";
+                for(i = 0; i < arr.length; i++){
+                    newStr += (String.fromCharCode(arr[i]));
+                }
+                return btoa(newStr);
+            }
+
+            //encrypt message using session key
+            async function encryptMessage(msg, key) {
+                const iv = window.crypto.getRandomValues(new Uint8Array(12)); //initialization vector (needed to decrypt as well)
+                const ciphertext = await window.crypto.subtle.encrypt(
+                    {
+                        name: "AES-GCM",
+                        iv
+                    },
+                    key,
+                    new TextEncoder().encode(msg)
+                );
+                return {msg : encode64(new Uint8Array(ciphertext)), iv};
+            }
+
+            //decrypt message using session key
+            async function decryptMessage(payload, key) {
+                const binaryString = atob(payload.msg); //decode from base64
+                const bytes = new Uint8Array([...binaryString].map(char => char.charCodeAt(0))); //splits binaryString into individual bytes
+                const iv = new Uint8Array(Object.values(payload.iv));
+                const plaintext = await window.crypto.subtle.decrypt(
+                    {
+                        name: "AES-GCM",
+                        iv,
+                    },
+                    key,
+                    bytes
+                );
+                let dec = new TextDecoder;
+                return dec.decode(plaintext);
+            }
+
+            async function sendMessage() {
+                const messageInput = document.getElementById('messageInput');
+                if(messageInput.value === "") return;
+                const date = new Date();
+                const message = {
+                    payload : await encryptMessage(messageInput.value, sessionKey),
+                    name : sessionStorage.getItem("displayName"),
+                    time : date.toLocaleTimeString('en-US')
+                };
+                const jsonMessage = JSON.stringify(message);
+                socket.emit('message', jsonMessage);
+                messageInput.value = '';
+            }
+
+            const sendButton = document.getElementById("sendButton");
+            sendButton.addEventListener('click', sendMessage);
+
+            messageInput.addEventListener('keydown', (event) => {
+                if(event.key === 'Enter'){
+                    sendMessage();
+                }
+            });
+
+            function displayMessage(message){
+                var messageDiv = document.getElementById('messages');
+                messageDiv.innerHTML ='<div class="singleMessage">' + '\n' + '  <p>' +  message + '  </p>' + '</div>' + messageDiv.innerHTML;
+            }
+
+            let drawableCanvas = document.getElementById("drawableCanvas");
+            let canvasCTX = drawableCanvas.getContext("2d");
+            let mouseDown = false;
+
+
+            function toggleCanvas() {
+                const textControls = document.getElementById('textControls');
+                const drawControls = document.getElementById('drawControls');
+                
+                if(textControls.classList.contains('invisible')){
+                    textControls.classList.remove('invisible');
+                    drawControls.classList.add('invisible');
+                }
+                else {
+                    textControls.classList.add('invisible');
+                    drawControls.classList.remove('invisible');
+                }
+                
+            }
+
+            function getMousePos(canvas, event){
+                var rect = canvas.getBoundingClientRect();
+                return {
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top
+                };
+            }
+
+            window.addEventListener("mousedown", (event) => {
+                mouseDown = true;
+            })
+
+            window.addEventListener("mouseup", (event) => {
+                mouseDown = false;
+            })
+
+            function draw(event){
+                let pos = getMousePos(drawableCanvas, event);
+                if(mouseDown){
+                    canvasCTX.fillStyle = "#000000";
+                    canvasCTX.fillRect (pos.x, pos.y, 3, 3);
+                }
+            }
+
+            function clearDrawing(){
+                canvasCTX.reset();
+            }
+
+            let sendDrawingButton = document.getElementById("sendDrawing");
+            sendDrawingButton.addEventListener('click', sendCanvas);
+            
+            async function sendCanvas() {
+                const canvasCords = drawableCanvas.getBoundingClientRect();
+                const canvasData = canvasCTX.getImageData(0,0, canvasCords.width, canvasCords.height);
+                const imageData = {
+                    width : canvasData.width,
+                    height : canvasData.height,
+                    data : canvasData.data
+                };
+                if(imageData === null) return;
+                const date = new Date();
+                const canvasMsg = {
+                    payload : await encryptMessage(JSON.stringify(imageData), sessionKey),
+                    name : sessionStorage.getItem("displayName"),
+                    time : date.toLocaleTimeString('en-US')
+                };
+                const jsonCanvasMsg = JSON.stringify(canvasMsg);
+                socket.emit('sendCanvas', jsonCanvasMsg);
+                clearDrawing();
+            }
+            
+            function displayImage(imageData, name, time){
+                let newCanvas = document.createElement("canvas");
+                let newCanvasCTX = newCanvas.getContext("2d");
+                newCanvas.width = imageData.width;
+                newCanvas.height = imageData.height;
+                let arr = new Uint8ClampedArray(Object.values(imageData.data));
+                let newImageData = new ImageData(arr, imageData.width, imageData.height);
+                newCanvasCTX.putImageData(newImageData, 0, 0);
+                const newUrl = newCanvas.toDataURL();
+                let messageDiv = document.getElementById("messages");
+                messageDiv.innerHTML ='<div class="singleMessage">' + '\n' + '  <p>' + "  " + time + " | " + name + ": " + '<img src=' + newUrl + '>' + '</p>' + '</div>' + messageDiv.innerHTML;
+            }
         
-        async function sendCanvas() {
-            const canvasCords = drawableCanvas.getBoundingClientRect();
-            const canvasData = canvasCTX.getImageData(0,0, canvasCords.width, canvasCords.height);
-            const imageData = {
-                width : canvasData.width,
-                height : canvasData.height,
-                data : canvasData.data
-            };
-            if(imageData === null) return;
-            const date = new Date();
-            const canvasMsg = {
-                payload : await encryptMessage(JSON.stringify(imageData), sessionKey),
-                name : sessionStorage.getItem("displayName"),
-                time : date.toLocaleTimeString('en-US')
-            };
-            const jsonCanvasMsg = JSON.stringify(canvasMsg);
-            socket.emit('sendCanvas', jsonCanvasMsg);
-        }
-        
-        function displayImage(imageData){
-            let newCanvas = document.createElement("canvas");
-            let newCanvasCTX = newCanvas.getContext("2d");
-            newCanvas.width = imageData.width;
-            newCanvas.height = imageData.height;
-            let arr = new Uint8ClampedArray(Object.values(imageData.data));
-            let newImageData = new ImageData(arr, imageData.width, imageData.height);
-            newCanvasCTX.putImageData(newImageData, 0, 0);
-            const newUrl = newCanvas.toDataURL();
-            const newImage = new Image();
-            newImage.src = newUrl;
-            newImage.style.border = "1px solid black";
-            let messageDiv = document.getElementById("messages");
-            messageDiv.appendChild(newImage);
-        }
-    
-        //debug purposes
-        socket.onAny(event => {
-            console.log(`got ${event}`);
-        });
+            //debug purposes
+            socket.onAny(event => {
+                console.log(`got ${event}`);
+            });
 
-        socket.on("hostAssigned", (event) => {
-            host = true;
-            generateSessionKey();
-        });
+            socket.on("hostAssigned", (event) => {
+                host = true;
+                sendSessionKeys();
+            });
 
-        socket.on("joinedRoom", async (event) => {
-            const jsonJoinedRoom = JSON.parse(event);
-            const joinedRoomString = "" + jsonJoinedRoom.time + " | " + jsonJoinedRoom.name + " has joined the room!";
-            displayMessage(joinedRoomString);
-            if (host) {
+            socket.on("joinedRoom", async (event) => {
+                const jsonJoinedRoom = JSON.parse(event);
+                const joinedRoomString = "" + jsonJoinedRoom.time + " | " + jsonJoinedRoom.name + " has joined the room!";
+                displayMessage(joinedRoomString);
                 pubKey = await window.crypto.subtle.importKey(
                     "jwk", 
                     jsonJoinedRoom.publicKey, 
@@ -291,52 +322,63 @@
                     ['encrypt']
                 );
                 publicKeys.push(pubKey);
-                sendSessionKeys();
-            }
-        });
+                if(host) sendSessionKeys();
+            });
 
-        socket.on("nameExists", (event) => {
-            alert("Name already exists in room! Please choose another name.");
-            window.location.replace("../");
-        });
+            socket.on("nameExists", (event) => {
+                alert("Name already exists in room! Please choose another name.");
+                window.location.replace("../");
+            });
 
-        socket.on("leftRoom", (event) => {
-            var jsonLeftRoom = JSON.parse(event);
-            var leftRoomString = "" + jsonLeftRoom.time + " | " + jsonLeftRoom.name + " has left the room!";
-            displayMessage(leftRoomString);
-        });
-
-        socket.on('recieveSessionKey', async (event) => {
-            try {
-                maybeJson = await decryptSessionKey(event, keyPair.privateKey)
-                const jsonSessionKey = JSON.parse(maybeJson);
-                sessionKey = await window.crypto.subtle.importKey(
+            socket.on("leftRoom", async (event) => {
+                var jsonLeftRoom = JSON.parse(event);
+                var leftRoomString = "" + jsonLeftRoom.time + " | " + jsonLeftRoom.name + " has left the room!";
+                displayMessage(leftRoomString);
+                pubKey = await window.crypto.subtle.importKey(
                     "jwk", 
-                    jsonSessionKey.key, 
+                    jsonLeftRoom.publicKey, 
                     {
-                        name: "AES-GCM",
+                        name: "RSA-OAEP",
+                        hash: "SHA-256"
                     },
                     true, 
-                    ['encrypt','decrypt']
+                    ['encrypt']
                 );
-            }
-            catch (exception){
-                console.log(exception);
-            }
-        })
+                publicKeys = publicKeys.filter(e => e !== pubKey);
+            });
 
-        socket.on("message", async (event) => {
-            var jsonMessage = JSON.parse(event);
-            var msgString = "" + jsonMessage.time + " | " + jsonMessage.name + ": " + await decryptMessage(jsonMessage.payload, sessionKey);
-            displayMessage(msgString);
-        });
+            socket.on('recieveSessionKey', async (event) => {
+                try {
+                    maybeJson = await decryptSessionKey(event, keyPair.privateKey)
+                    const jsonSessionKey = JSON.parse(maybeJson);
+                    sessionKey = await window.crypto.subtle.importKey(
+                        "jwk", 
+                        jsonSessionKey.key, 
+                        {
+                            name: "AES-GCM",
+                        },
+                        true, 
+                        ['encrypt','decrypt']
+                    );
+                }
+                catch (exception){
+                    console.log("Not valid json, trying next key");
+                }
+            })
 
-        socket.on('receiveCanvas', async (event) => {
-            const jsonCanvasMsg = JSON.parse(event);
-            const canvasData = await decryptMessage(jsonCanvasMsg.payload, sessionKey);
-            displayImage(JSON.parse(canvasData));
-        })
+            socket.on("message", async (event) => {
+                var jsonMessage = JSON.parse(event);
+                var msgString = "" + jsonMessage.time + " | " + jsonMessage.name + ": " + await decryptMessage(jsonMessage.payload, sessionKey);
+                displayMessage(msgString);
+            });
 
-        </script>
-    </body>
+            socket.on('receiveCanvas', async (event) => {
+                const jsonCanvasMsg = JSON.parse(event);
+                const canvasData = await decryptMessage(jsonCanvasMsg.payload, sessionKey);
+                displayImage(JSON.parse(canvasData), jsonCanvasMsg.name, jsonCanvasMsg.time);
+            })
+
+            </script>
+        </body>
     </html>
+        
