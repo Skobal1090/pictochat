@@ -32,7 +32,7 @@ div.invisible {
 }
 .singleMessage{
     width: 700px;
-    border-bottom: 1px solid #AFAFAF;
+    border-bottom: 1px solid #AAAAAA;
 }
 #container{
     display: flex;

@@ -11,7 +11,7 @@ except FileNotFoundError:
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = envVars[0]
-socketio = SocketIO(app)
+socketio = SocketIO(app, max_http_buffer_size=1024*1024*5)
 activeConnections = []
 
 @app.route('/')
@@ -53,7 +53,6 @@ def handle_message(msg):
 
 @socketio.on('sendSessionKey')
 def handle_sendSessionKey(sessionKeyMsg):
-    print(f"SessionKeyMsg {sessionKeyMsg}")
     emit('recieveSessionKey', sessionKeyMsg, broadcast=True)
 
 @socketio.on('sendCanvas')
