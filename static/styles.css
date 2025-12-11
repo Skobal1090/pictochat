@@ -3,8 +3,26 @@ body {
     height: 100vh;
 }
 #inputControls{
-    height: 100px;
-    align-items: center;
+    height: 350px;
+    width: 300px;
+    margin: 10px auto;
+    
+}
+#textControls{
+    display: flex;
+}
+#drawButtons {
+    display: flex;
+    justify-content: end;
+}
+#drawableCanvas{
+    margin-top: 10px;
+}
+#messageInput{
+    flex-grow: 1;
+}
+#clearDrawing{
+    margin-right: auto;
 }
 /*
 img {
