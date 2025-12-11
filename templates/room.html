@@ -73,11 +73,12 @@
                 leaveRoom();
             });
 
-            function leaveRoom() {
+            async function leaveRoom() {
                 var date = new Date();
                 const leftRoomMsg = {
                     name : sessionStorage.getItem("displayName"),
-                    time : date.toLocaleTimeString('en-US')
+                    time : date.toLocaleTimeString('en-US'),
+                    publicKey : await window.crypto.subtle.exportKey('jwk', keyPair.publicKey)
                 };
                 const jsonLeftRoomMsg = JSON.stringify(leftRoomMsg);
                 socket.emit('leftRoom', jsonLeftRoomMsg);
@@ -121,7 +122,7 @@
             }
 
             async function sendSessionKeys(){
-                generateSessionKey();
+                await generateSessionKey();
                 const sessionJson = {
                     key: await window.crypto.subtle.exportKey('jwk', sessionKey)
                 }
@@ -165,7 +166,6 @@
                     new TextEncoder().encode(msg)
                 );
                 return {msg : encode64(new Uint8Array(ciphertext)), iv};
-                //return {msg : btoa(String.fromCharCode(...new Uint8Array(ciphertext))), iv};
             }
 
             //decrypt message using session key
@@ -285,7 +285,6 @@
             }
             
             function displayImage(imageData, name, time){
-                console.log(name, time)
                 let newCanvas = document.createElement("canvas");
                 let newCanvasCTX = newCanvas.getContext("2d");
                 newCanvas.width = imageData.width;
@@ -305,27 +304,25 @@
 
             socket.on("hostAssigned", (event) => {
                 host = true;
-                generateSessionKey();
+                sendSessionKeys();
             });
 
             socket.on("joinedRoom", async (event) => {
                 const jsonJoinedRoom = JSON.parse(event);
                 const joinedRoomString = "" + jsonJoinedRoom.time + " | " + jsonJoinedRoom.name + " has joined the room!";
                 displayMessage(joinedRoomString);
-                if (host) {
-                    pubKey = await window.crypto.subtle.importKey(
-                        "jwk", 
-                        jsonJoinedRoom.publicKey, 
-                        {
-                            name: "RSA-OAEP",
-                            hash: "SHA-256"
-                        },
-                        true, 
-                        ['encrypt']
-                    );
-                    publicKeys.push(pubKey);
-                    sendSessionKeys();
-                }
+                pubKey = await window.crypto.subtle.importKey(
+                    "jwk", 
+                    jsonJoinedRoom.publicKey, 
+                    {
+                        name: "RSA-OAEP",
+                        hash: "SHA-256"
+                    },
+                    true, 
+                    ['encrypt']
+                );
+                publicKeys.push(pubKey);
+                if(host) sendSessionKeys();
             });
 
             socket.on("nameExists", (event) => {
@@ -333,10 +330,21 @@
                 window.location.replace("../");
             });
 
-            socket.on("leftRoom", (event) => {
+            socket.on("leftRoom", async (event) => {
                 var jsonLeftRoom = JSON.parse(event);
                 var leftRoomString = "" + jsonLeftRoom.time + " | " + jsonLeftRoom.name + " has left the room!";
                 displayMessage(leftRoomString);
+                pubKey = await window.crypto.subtle.importKey(
+                    "jwk", 
+                    jsonLeftRoom.publicKey, 
+                    {
+                        name: "RSA-OAEP",
+                        hash: "SHA-256"
+                    },
+                    true, 
+                    ['encrypt']
+                );
+                publicKeys = publicKeys.filter(e => e !== pubKey);
             });
 
             socket.on('recieveSessionKey', async (event) => {
@@ -354,7 +362,7 @@
                     );
                 }
                 catch (exception){
-                    console.log(exception);
+                    console.log("Not valid json, trying next key");
                 }
             })
 
@@ -366,7 +374,6 @@
 
             socket.on('receiveCanvas', async (event) => {
                 const jsonCanvasMsg = JSON.parse(event);
-                console.log("canvas: ", jsonCanvasMsg);
                 const canvasData = await decryptMessage(jsonCanvasMsg.payload, sessionKey);
                 displayImage(JSON.parse(canvasData), jsonCanvasMsg.name, jsonCanvasMsg.time);
             })
