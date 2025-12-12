@@ -2,34 +2,29 @@ body {
     background-color: #AFAFAF;
     height: 100vh;
 }
-#inputControls{
+#inputControls {
     height: 350px;
     width: 300px;
     margin: 10px auto;
     touch-action: none;    
 }
-#textControls{
+#textControls {
     display: flex;
 }
 #drawButtons {
     display: flex;
     justify-content: end;
 }
-#drawableCanvas{
+#drawableCanvas {
     margin-top: 10px;
 }
-#messageInput{
+#messageInput {
     flex-grow: 1;
 }
-#clearDrawing{
+#clearDrawing {
     margin-right: auto;
 }
-/*
-img {
-    border: 1px solid black;
-}
-*/
-canvas{
+canvas {
     border: 1px solid black;
 }
 

@@ -70,8 +70,13 @@
             }
 
             socket.on('disconnect', function() {
+                console.log('disconnected');
                 leaveRoom();
             });
+
+            window.addEventListener('beforeunload', (event) => {
+                leaveRoom();
+            })
 
             async function leaveRoom() {
                 var date = new Date();
@@ -82,6 +87,7 @@
                 };
                 const jsonLeftRoomMsg = JSON.stringify(leftRoomMsg);
                 socket.emit('leftRoom', jsonLeftRoomMsg);
+                host = false;
                 socket.disconnect();
             }
 
@@ -217,19 +223,18 @@
             let canvasCTX = drawableCanvas.getContext("2d");
             let mouseDown = false;
 
-	    drawableCanvas.addEventListener('pointermove', (event) => {
-		    event.preventDefault();
-		    draw(event);
+            drawableCanvas.addEventListener('pointermove', (event) => {
+                event.preventDefault();
+                draw(event);
+            });
 
-	    });
+            window.addEventListener('pointerdown', (event) => {
+                mouseDown = true;
+            });
 
-	    window.addEventListener('pointerdown', (event) => {
-		    mouseDown = true;
-	    });
-
-	    window.addEventListener('pointerup', (event) => {
-		    mouseDown = false;
-	    });
+            window.addEventListener('pointerup', (event) => {
+                mouseDown = false;
+            });
 
             function toggleCanvas() {
                 const textControls = document.getElementById('textControls');
@@ -344,20 +349,33 @@
             });
 
             socket.on("leftRoom", async (event) => {
-                var jsonLeftRoom = JSON.parse(event);
-                var leftRoomString = "" + jsonLeftRoom.time + " | " + jsonLeftRoom.name + " has left the room!";
+                let leftRoomParsed;
+                try {
+                    leftRoomParsed = JSON.parse(event);
+
+                } catch (e){
+                    leftRoomParsed = event;
+                }
+                const date = new Date();
+                const leftRoomString = "" + date.toLocaleTimeString('en-US') + " | " + leftRoomParsed.name + " has left the room!";
                 displayMessage(leftRoomString);
-                pubKey = await window.crypto.subtle.importKey(
-                    "jwk", 
-                    jsonLeftRoom.publicKey, 
-                    {
-                        name: "RSA-OAEP",
-                        hash: "SHA-256"
-                    },
-                    true, 
-                    ['encrypt']
-                );
-                publicKeys = publicKeys.filter(e => e !== pubKey);
+                if(leftRoomParsed.publicKey !== 0) {
+                    pubKey = await window.crypto.subtle.importKey(
+                        "jwk", 
+                        leftRoomParsed.publicKey, 
+                        {
+                            name: "RSA-OAEP",
+                            hash: "SHA-256"
+                        },
+                        true, 
+                        ['encrypt']
+                    );
+                    try {
+                        publicKeys = publicKeys.filter(e => e !== pubKey);
+                    } catch (e) {
+                        console.log("remove key failed")
+                    }
+                }
             });
 
             socket.on('recieveSessionKey', async (event) => {
