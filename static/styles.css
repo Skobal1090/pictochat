@@ -6,7 +6,7 @@ body {
     height: 350px;
     width: 300px;
     margin: 10px auto;
-    
+    touch-action: none;    
 }
 #textControls{
     display: flex;

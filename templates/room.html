@@ -217,6 +217,19 @@
             let canvasCTX = drawableCanvas.getContext("2d");
             let mouseDown = false;
 
+	    drawableCanvas.addEventListener('pointermove', (event) => {
+		    event.preventDefault();
+		    draw(event);
+
+	    });
+
+	    window.addEventListener('pointerdown', (event) => {
+		    mouseDown = true;
+	    });
+
+	    window.addEventListener('pointerup', (event) => {
+		    mouseDown = false;
+	    });
 
             function toggleCanvas() {
                 const textControls = document.getElementById('textControls');
