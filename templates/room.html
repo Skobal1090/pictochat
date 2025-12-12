@@ -60,8 +60,12 @@
 
             async function joinRoom() {
                 const date = new Date();
+		const username = sessionStorage.getItem("displayName");
+		if (!username){
+			window.location.replace("../");
+		};
                 const joinRoomMsg = {
-                    name : sessionStorage.getItem("displayName"),
+                    name : username,
                     time : date.toLocaleTimeString('en-US'),
                     publicKey : await window.crypto.subtle.exportKey('jwk', keyPair.publicKey)
                 };
